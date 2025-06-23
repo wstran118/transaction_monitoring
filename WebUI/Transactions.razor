@@ -1,0 +1,64 @@
+@page "/transactions"
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject AuthenticationStateProvider AuthStateProvider
+
+<h3>Transactions</h3>
+
+@if (User.IsInRole("ComplianceOfficer"))
+{
+    <h4>Compliance Report</h4>
+    <input type="date" @bind="startDate" />
+    <input type="date" @bind="endDate" />
+    <button @onclick="LoadReport">Generate Report</button>
+
+    @if (flaggedTransactions != null)
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Amount</th>
+                    <th>Timestamp</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var transaction in flaggedTransactions)
+                {
+                    <tr>
+                        <td>@transaction.Id</td>
+                        <td>@transaction.Amount</td>
+                        <td>@transaction.Timestamp</td>
+                        <td>@transaction.Status</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private DateTime startDate = DateTime.Today.AddDays(-7);
+    private DateTime endDate = DateTime.Today;
+    private List<Transaction> flaggedTransactions;
+
+    private class Transaction
+    {
+        public Guid Id { get; set; }
+        public decimal Amount { get; set; }
+        public string UserId { get; set; }
+        public DateTime Timestamp { get; set; }
+        public string Status { get; set; }
+    }
+
+    private async Task LoadReport()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.IsInRole("ComplianceOfficer"))
+        {
+            flaggedTransactions = await Http.GetFromJsonAsync<List<Transaction>>(
+                $"https://reporting-service/api/reports/compliance?startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}");
+        }
+    }
+}
